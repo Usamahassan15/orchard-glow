@@ -1,24 +1,29 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Leaf } from "lucide-react";
 import hero from "@/assets/hero-orchard.jpg";
+import heroMobile from "@/assets/hero-orchard-mobile.jpg";
 
 export function Hero() {
   return (
     <section id="home" className="relative overflow-hidden">
       <div className="absolute inset-0 -z-10">
-        <img
-          src={hero}
-          alt="Mango orchard at golden hour"
-          width={1920}
-          height={1200}
-          fetchPriority="high"
-          className="h-full w-full object-cover"
-        />
+        <picture>
+          <source media="(min-width: 768px)" srcSet={hero} />
+          <img
+            src={heroMobile}
+            alt="Ripe mangoes hanging in our orchard at golden hour"
+            width={912}
+            height={1408}
+            fetchPriority="high"
+            className="h-full w-full object-cover object-center"
+          />
+        </picture>
         <div className="absolute inset-0 bg-gradient-to-br from-leaf-deep/85 via-leaf-deep/55 to-mango-deep/40" />
         <div className="absolute inset-0" style={{ backgroundImage: "var(--gradient-glow)" }} />
       </div>
 
-      <div className="container-x relative flex min-h-[92vh] flex-col justify-center py-24 text-cream">
+      <div className="container-x relative flex min-h-[88svh] flex-col justify-center py-20 text-cream sm:py-24 md:min-h-[92vh]">
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

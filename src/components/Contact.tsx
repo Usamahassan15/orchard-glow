@@ -3,6 +3,7 @@ import { MapPin, Phone, Mail, MessageCircle, Send } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
 
 const schema = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(100),
@@ -12,21 +13,34 @@ const schema = z.object({
 
 export function Contact() {
   const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [sending, setSending] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsed = schema.safeParse(form);
     if (!parsed.success) {
       toast.error(parsed.error.issues[0].message);
       return;
     }
+    setSending(true);
+    const { error } = await supabase.from("messages").insert({
+      name: parsed.data.name,
+      email: parsed.data.email,
+      message: parsed.data.message,
+    });
+    setSending(false);
+    if (error) {
+      toast.error("Could not send your message. Please try again.");
+      return;
+    }
     const text = encodeURIComponent(
       `Hi Sunwood!\n\nName: ${form.name}\nEmail: ${form.email}\n\n${form.message}`,
     );
     window.open(`https://wa.me/923175817400?text=${text}`, "_blank");
-    toast.success("Opening WhatsApp…");
+    toast.success("Message received!", { description: "Opening WhatsApp…" });
     setForm({ name: "", email: "", message: "" });
   };
+
 
   return (
     <section id="contact" className="relative py-24 md:py-32">
@@ -108,9 +122,10 @@ export function Contact() {
               />
               <button
                 type="submit"
-                className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-leaf-deep"
+                disabled={sending}
+                className="group disabled:opacity-60 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-leaf-deep"
               >
-                Send via WhatsApp
+                {sending ? "Sending…" : "Send via WhatsApp"}
                 <Send className="size-4 transition-transform group-hover:translate-x-1" />
               </button>
             </div>

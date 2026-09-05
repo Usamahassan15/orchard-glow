@@ -4,6 +4,7 @@ import { X, ChevronDown, Upload, CheckCircle2 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useCart, subtotal, DELIVERY_CHARGES } from "@/store/cart";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 const schema = z.object({
@@ -39,13 +40,44 @@ export function CheckoutDialog({ open, onClose }: { open: boolean; onClose: () =
     if (p === "advance") setAdvanceOpen(true);
   };
 
-  const submit = () => {
+  const [placing, setPlacing] = useState(false);
+
+  const submit = async () => {
     if (items.length === 0) { toast.error("Your cart is empty"); return; }
     const parsed = schema.safeParse(form);
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
 
+    setPlacing(true);
+    const { data, error } = await supabase
+      .from("orders")
+      .insert({
+        customer_name: form.fullName,
+        phone: form.phone,
+        address: form.address,
+        city: form.city,
+        province: form.province,
+        postal: form.postal,
+        notes: form.notes,
+        payment_method: payment,
+        items: items.map((i) => ({
+          name: i.name, weight: i.weight, qty: i.qty, unitPrice: i.unitPrice,
+        })),
+        subtotal: sub,
+        delivery: DELIVERY_CHARGES,
+        total: grand,
+        status: "new",
+      })
+      .select("order_no")
+      .single();
+    setPlacing(false);
+
+    if (error) {
+      toast.error("Could not save your order. Please try again.");
+      return;
+    }
+
     const lines = [
-      `*New Order — Sunwood Mango Farm*`,
+      `*New Order #${data?.order_no ?? ""} — Sunwood Mango Farm*`,
       ``,
       `*Customer*`,
       `Name: ${form.fullName}`,
@@ -66,10 +98,11 @@ export function CheckoutDialog({ open, onClose }: { open: boolean; onClose: () =
 
     const url = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(lines)}`;
     window.open(url, "_blank");
-    toast.success("Order sent to WhatsApp!", { description: "We'll confirm shortly." });
+    toast.success("Order placed!", { description: "We'll confirm on WhatsApp shortly." });
     clear();
     onClose();
   };
+
 
   return (
     <AnimatePresence>
@@ -202,9 +235,10 @@ export function CheckoutDialog({ open, onClose }: { open: boolean; onClose: () =
               <footer className="border-t border-border p-6">
                 <button
                   onClick={submit}
-                  className="w-full rounded-full bg-mango py-4 text-sm font-bold uppercase tracking-wider text-leaf-deep shadow-[0_20px_50px_-15px_oklch(0.85_0.18_82/0.7)] transition hover:bg-mango-deep hover:text-cream"
+                  disabled={placing}
+                  className="w-full disabled:opacity-60 rounded-full bg-mango py-4 text-sm font-bold uppercase tracking-wider text-leaf-deep shadow-[0_20px_50px_-15px_oklch(0.85_0.18_82/0.7)] transition hover:bg-mango-deep hover:text-cream"
                 >
-                  Confirm Order via WhatsApp
+                  {placing ? "Placing order…" : "Confirm Order via WhatsApp"}
                 </button>
               </footer>
             </div>
