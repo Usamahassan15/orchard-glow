@@ -235,9 +235,10 @@ export function CheckoutDialog({ open, onClose }: { open: boolean; onClose: () =
               <footer className="border-t border-border p-6">
                 <button
                   onClick={submit}
-                  className="w-full rounded-full bg-mango py-4 text-sm font-bold uppercase tracking-wider text-leaf-deep shadow-[0_20px_50px_-15px_oklch(0.85_0.18_82/0.7)] transition hover:bg-mango-deep hover:text-cream"
+                  disabled={placing}
+                  className="w-full disabled:opacity-60 rounded-full bg-mango py-4 text-sm font-bold uppercase tracking-wider text-leaf-deep shadow-[0_20px_50px_-15px_oklch(0.85_0.18_82/0.7)] transition hover:bg-mango-deep hover:text-cream"
                 >
-                  Confirm Order via WhatsApp
+                  {placing ? "Placing order…" : "Confirm Order via WhatsApp"}
                 </button>
               </footer>
             </div>

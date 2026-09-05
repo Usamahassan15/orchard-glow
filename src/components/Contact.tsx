@@ -122,9 +122,10 @@ export function Contact() {
               />
               <button
                 type="submit"
-                className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-leaf-deep"
+                disabled={sending}
+                className="group disabled:opacity-60 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-leaf-deep"
               >
-                Send via WhatsApp
+                {sending ? "Sending…" : "Send via WhatsApp"}
                 <Send className="size-4 transition-transform group-hover:translate-x-1" />
               </button>
             </div>
