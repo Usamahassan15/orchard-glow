@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { PRODUCTS, priceFor } from "@/data/products";
+import { fetchStoreProducts } from "@/lib/store-api";
 import { ProductCard } from "./ProductCard";
 import { cn } from "@/lib/utils";
 
@@ -16,8 +18,15 @@ export function Shop({ onBuyNow }: { onBuyNow: () => void }) {
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  const { data: products = PRODUCTS } = useQuery({
+    queryKey: ["store-products"],
+    queryFn: fetchStoreProducts,
+    staleTime: 60_000,
+  });
+
   const filtered = useMemo(() => {
-    let list = PRODUCTS.filter((p) => {
+    let list = products.filter((p) => {
+
       const base = priceFor(p, "5 KG");
       if (base < priceRange[0] || base > priceRange[1]) return false;
       if (availability.length && !availability.includes(p.availability)) return false;
