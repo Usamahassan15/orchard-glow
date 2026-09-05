@@ -41,7 +41,7 @@ export function Shop({ onBuyNow }: { onBuyNow: () => void }) {
       case "new": list = [...list].sort((a, b) => b.createdAt - a.createdAt); break;
     }
     return list;
-  }, [sort, availability, priceRange]);
+  }, [products, sort, availability, priceRange]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
