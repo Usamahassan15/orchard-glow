@@ -11,9 +11,9 @@ export function Hero() {
           <source media="(min-width: 768px)" srcSet={hero} />
           <img
             src={heroMobile}
-            alt="Ripe mangoes hanging in our orchard at golden hour"
-            width={912}
-            height={1408}
+            alt="Children holding freshly picked mangoes beside a basket of mangoes in our orchard"
+            width={1024}
+            height={1536}
             fetchPriority="high"
             className="h-full w-full object-cover object-center"
           />
