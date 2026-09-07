@@ -284,25 +284,42 @@ function Orders({ rows, reload }: { rows: OrderRow[]; reload: () => void }) {
 
           {openId === o.id && (
             <div className="mt-4 grid gap-4 border-t border-border pt-4 text-sm md:grid-cols-2">
-              <div>
-                <h4 className="text-xs uppercase tracking-widest text-muted-foreground">Delivery</h4>
-                <p className="mt-1">{o.address}</p>
-                <p>{o.city}, {o.province} {o.postal}</p>
-                <p className="mt-2">Payment: {o.payment_method === "cod" ? "Cash on delivery" : "Advance payment"}</p>
-                {o.notes && <p className="mt-2 text-muted-foreground">Notes: {o.notes}</p>}
+              <div className="rounded-2xl bg-secondary/50 p-4">
+                <h4 className="text-xs uppercase tracking-widest text-muted-foreground">Customer Information</h4>
+                <dl className="mt-3 space-y-2">
+                  <Row label="Full Name" value={o.customer_name} />
+                  <Row label="Phone Number" value={o.phone} />
+                  <Row label="Complete Address" value={o.address} />
+                  <Row label="City" value={o.city} />
+                  <Row label="Province" value={o.province || "—"} />
+                  <Row label="Postal Code" value={o.postal || "—"} />
+                  <Row label="Notes" value={o.notes || "—"} />
+                </dl>
+                <h4 className="mt-4 text-xs uppercase tracking-widest text-muted-foreground">Payment Method</h4>
+                <p className="mt-1 font-semibold">
+                  {o.payment_method === "cod" ? "Cash on Delivery" : "Advance Payment (Bank / EasyPaisa)"}
+                </p>
               </div>
-              <div>
-                <h4 className="text-xs uppercase tracking-widest text-muted-foreground">Items</h4>
-                <ul className="mt-1 space-y-1">
+              <div className="rounded-2xl bg-secondary/50 p-4">
+                <h4 className="text-xs uppercase tracking-widest text-muted-foreground">Order Items</h4>
+                <ul className="mt-3 space-y-1.5">
                   {o.items?.map((i, idx) => (
-                    <li key={idx} className="flex justify-between">
+                    <li key={idx} className="flex justify-between gap-3">
                       <span>{i.name} — {i.weight} × {i.qty}</span>
-                      <span>{pkr(i.unitPrice * i.qty)}</span>
+                      <span className="shrink-0">{pkr(i.unitPrice * i.qty)}</span>
                     </li>
                   ))}
                 </ul>
-                <div className="mt-2 flex justify-between border-t border-border pt-2 font-bold">
-                  <span>Total (incl. delivery)</span><span>{pkr(o.total)}</span>
+                <div className="mt-4 space-y-1.5 border-t border-border pt-3">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Subtotal</span><span>{pkr(o.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Delivery</span><span>{pkr(o.delivery)}</span>
+                  </div>
+                  <div className="flex justify-between pt-1 font-display text-base font-bold">
+                    <span>Grand Total</span><span>{pkr(o.total)}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -310,6 +327,15 @@ function Orders({ rows, reload }: { rows: OrderRow[]; reload: () => void }) {
         </div>
       ))}
       {list.length === 0 && <p className="text-sm text-muted-foreground">No orders here yet.</p>}
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <dt className="shrink-0 text-muted-foreground">{label}</dt>
+      <dd className="text-right font-medium break-words">{value}</dd>
     </div>
   );
 }
