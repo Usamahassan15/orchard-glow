@@ -5,9 +5,9 @@ import heroMobile from "@/assets/hero-orchard-mobile.jpg";
 
 export function Hero() {
   return (
-    <section id="home" className="relative overflow-hidden">
-      <div className="absolute inset-0 -z-10">
-        <picture>
+    <section id="home" className="relative isolate overflow-hidden bg-leaf-deep">
+      <div className="absolute inset-0 z-0">
+        <picture className="block h-full w-full">
           <source media="(min-width: 768px)" srcSet={hero} />
           <img
             src={heroMobile}
@@ -15,14 +15,14 @@ export function Hero() {
             width={1024}
             height={1536}
             fetchPriority="high"
-            className="h-full w-full object-cover object-center"
+            className="block h-full w-full object-cover object-center"
           />
         </picture>
         <div className="absolute inset-0 bg-gradient-to-br from-leaf-deep/85 via-leaf-deep/55 to-mango-deep/40" />
         <div className="absolute inset-0" style={{ backgroundImage: "var(--gradient-glow)" }} />
       </div>
 
-      <div className="container-x relative flex min-h-[88svh] flex-col justify-center py-20 text-cream sm:py-24 md:min-h-[92vh]">
+      <div className="container-x relative z-10 flex min-h-[88svh] flex-col justify-center py-20 text-cream sm:py-24 md:min-h-[92vh]">
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
