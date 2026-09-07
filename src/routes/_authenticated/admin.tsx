@@ -331,6 +331,15 @@ function Orders({ rows, reload }: { rows: OrderRow[]; reload: () => void }) {
   );
 }
 
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <dt className="shrink-0 text-muted-foreground">{label}</dt>
+      <dd className="text-right font-medium break-words">{value}</dd>
+    </div>
+  );
+}
+
 const emptyProduct = {
   name: "", tagline: "", price: 2000, category: "Chaunsa", availability: "In Stock",
   discount: 0, image_key: "chaunsa", hover_key: "sindhri", is_active: true, sort_order: 99,
