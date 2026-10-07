@@ -3,12 +3,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Toaster, toast } from "sonner";
 import {
-  LayoutDashboard, Package, ShoppingCart, MessageSquare, LogOut, Plus, Trash2, Pencil, X,
+  LayoutDashboard, Package, ShoppingCart, MessageSquare, LogOut, Plus, Trash2, Pencil, X, ShieldCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllProducts, type DbProduct } from "@/lib/store-api";
 import { IMAGE_KEYS, imageFor } from "@/lib/product-images";
 import { cn } from "@/lib/utils";
+import { useServerFn } from "@tanstack/react-start";
+import { listAdmins, addAdmin, removeAdmin } from "@/lib/admins.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -46,7 +48,7 @@ const pkr = (n: number) => `PKR ${n.toLocaleString()}`;
 function AdminPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"dashboard" | "orders" | "products" | "messages">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "orders" | "products" | "messages" | "admins">("dashboard");
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -119,6 +121,7 @@ function AdminPage() {
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "products", label: "Products", icon: Package },
     { id: "messages", label: "Messages", icon: MessageSquare },
+    { id: "admins", label: "Edit Admins", icon: ShieldCheck },
   ] as const;
 
   return (
@@ -162,6 +165,7 @@ function AdminPage() {
         {isAdmin && tab === "orders" && <Orders rows={orders.data ?? []} reload={() => orders.refetch()} />}
         {isAdmin && tab === "products" && <Products rows={products.data ?? []} reload={() => products.refetch()} />}
         {isAdmin && tab === "messages" && <Messages rows={messages.data ?? []} reload={() => messages.refetch()} />}
+        {isAdmin && tab === "admins" && <Admins />}
       </div>
       <Toaster position="top-center" richColors />
     </main>
@@ -503,6 +507,100 @@ function Select({ label, value, options, onChange }: { label: string; value: str
       >
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
+    </div>
+  );
+}
+
+function Admins() {
+  const list = useServerFn(listAdmins);
+  const add = useServerFn(addAdmin);
+  const rm = useServerFn(removeAdmin);
+  const [me, setMe] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const admins = useQuery({ queryKey: ["admin-admins"], queryFn: () => list() });
+
+  useEffect(() => { supabase.auth.getUser().then(({ data }) => setMe(data.user?.id ?? null)); }, []);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await add({ data: { email, password } });
+      toast.success("New admin added");
+      setEmail(""); setPassword("");
+      admins.refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not add admin");
+    } finally { setBusy(false); }
+  };
+
+  const doRemove = async (id: string) => {
+    try {
+      await rm({ data: { userId: id } });
+      toast.success("Admin removed");
+      setConfirmId(null);
+      admins.refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not remove admin");
+    }
+  };
+
+  const target = admins.data?.find((a) => a.id === confirmId);
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="rounded-3xl border border-border bg-card p-6">
+        <h2 className="font-display text-xl font-bold">Add new admin</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Enter an email and password. They can sign in right away.</p>
+        <div className="mt-4 space-y-3">
+          <Input label="Email" type="email" value={email} onChange={setEmail} />
+          <Input label="Password (min 8 characters)" type="password" value={password} onChange={setPassword} />
+          <button disabled={busy} onClick={submit} className="w-full rounded-full bg-primary py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60">
+            {busy ? "Adding…" : "Add admin"}
+          </button>
+        </div>
+      </div>
+      <div className="rounded-3xl border border-border bg-card p-6">
+        <h2 className="font-display text-xl font-bold">Current admins</h2>
+        <div className="mt-4 space-y-2">
+          {admins.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+          {admins.data?.map((a, i) => (
+            <div key={a.id} className="flex items-center justify-between gap-2 rounded-2xl bg-secondary/50 px-4 py-3 text-sm">
+              <div className="min-w-0">
+                <div className="truncate font-semibold">{a.email}</div>
+                <div className="text-xs text-muted-foreground">
+                  {i === 0 ? "First admin" : `Admin #${i + 1}`}{a.id === me ? " · You" : ""}
+                </div>
+              </div>
+              <button
+                onClick={() => setConfirmId(a.id)}
+                disabled={(admins.data?.length ?? 0) <= 1}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs text-destructive disabled:opacity-40"
+              >
+                <Trash2 className="size-3" /> Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {target && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-leaf-deep/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl bg-background p-6 text-center shadow-2xl">
+            <h3 className="font-display text-xl font-bold">Remove admin access?</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">{target.email}</span> will no longer be able to open the admin panel.
+              {target.id === me && " This is your own account — you will lose access."}
+            </p>
+            <div className="mt-6 flex gap-2">
+              <button onClick={() => setConfirmId(null)} className="flex-1 rounded-full border border-border py-2.5 text-sm">Cancel</button>
+              <button onClick={() => doRemove(target.id)} className="flex-1 rounded-full bg-destructive py-2.5 text-sm font-semibold text-destructive-foreground">Yes, remove</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
