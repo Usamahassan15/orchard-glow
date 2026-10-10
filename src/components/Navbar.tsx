@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, ShoppingBag, X } from "lucide-react";
+import { Menu, ShoppingBag, X, User, LogOut, LayoutDashboard } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.png";
 import { useCart } from "@/store/cart";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { label: "Home", href: "#home" },
-  { label: "Shop", href: "#shop" },
-  { label: "Catalog", href: "#catalog" },
-  { label: "Our Story", href: "#story" },
-  { label: "Contact", href: "#contact" },
+  { label: "Home", href: "/#home" },
+  { label: "Shop", href: "/#shop" },
+  { label: "Our Story", href: "/#story" },
+  { label: "Blog", href: "/blog" },
+  { label: "FAQ", href: "/#faq" },
+  { label: "Contact", href: "/#contact" },
 ];
 
 export function Navbar() {
@@ -19,6 +22,14 @@ export function Navbar() {
   const items = useCart((s) => s.items);
   const setOpenCart = useCart((s) => s.setOpen);
   const count = items.reduce((s, i) => s + i.qty, 0);
+  const [email, setEmail] = useState<string | null>(null);
+  const [menu, setMenu] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setEmail(data.session?.user.email ?? null));
+    const { data } = supabase.auth.onAuthStateChange((_e, session) => setEmail(session?.user.email ?? null));
+    return () => data.subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -37,7 +48,7 @@ export function Navbar() {
       )}
     >
       <nav className="container-x flex h-16 items-center justify-between md:h-20">
-        <a href="#home" className="flex items-center gap-2">
+        <a href="/#home" className="flex items-center gap-2">
           <img src={logo} alt="Sunwood Mango Farm" width={40} height={40} className="size-9 md:size-10" />
           <div className="leading-tight">
             <div className="font-display text-lg font-bold tracking-tight md:text-xl">Sunwood</div>
@@ -60,6 +71,28 @@ export function Navbar() {
         </ul>
 
         <div className="flex items-center gap-2">
+          <div className="relative">
+            {email ? (
+              <button onClick={() => setMenu((m) => !m)} aria-label="Account" className="inline-flex size-10 items-center justify-center rounded-full border border-border bg-card">
+                <User className="size-4" />
+              </button>
+            ) : (
+              <Link to="/auth" className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-card px-3 text-sm font-medium" aria-label="Sign in or sign up">
+                <User className="size-4" /><span className="hidden sm:inline">Sign in</span>
+              </Link>
+            )}
+            {email && menu && (
+              <div className="absolute right-0 top-12 z-50 w-56 rounded-2xl border border-border bg-card p-2 shadow-xl">
+                <div className="truncate px-3 py-2 text-xs text-muted-foreground">{email}</div>
+                <Link to="/admin" onClick={() => setMenu(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-secondary">
+                  <LayoutDashboard className="size-4" /> Admin panel
+                </Link>
+                <button onClick={async () => { setMenu(false); await supabase.auth.signOut(); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-secondary">
+                  <LogOut className="size-4" /> Sign out
+                </button>
+              </div>
+            )}
+          </div>
           <button
             onClick={() => setOpenCart(true)}
             className="relative inline-flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105"
