@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      faqs: {
+        Row: {
+          answer: string
+          created_at: string
+          id: string
+          is_active: boolean
+          question: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          answer?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          question: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          question?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           created_at: string
@@ -104,15 +134,87 @@ export type Database = {
         }
         Relationships: []
       }
+      posts: {
+        Row: {
+          author: string
+          canonical_url: string
+          category: string
+          content: string
+          cover_image_url: string
+          created_at: string
+          excerpt: string
+          featured: boolean
+          id: string
+          image_alt: string
+          publish_date: string
+          reading_minutes: number
+          seo_description: string
+          seo_title: string
+          slug: string
+          status: string
+          tagline: string
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author?: string
+          canonical_url?: string
+          category?: string
+          content?: string
+          cover_image_url?: string
+          created_at?: string
+          excerpt?: string
+          featured?: boolean
+          id?: string
+          image_alt?: string
+          publish_date?: string
+          reading_minutes?: number
+          seo_description?: string
+          seo_title?: string
+          slug: string
+          status?: string
+          tagline?: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author?: string
+          canonical_url?: string
+          category?: string
+          content?: string
+          cover_image_url?: string
+          created_at?: string
+          excerpt?: string
+          featured?: boolean
+          id?: string
+          image_alt?: string
+          publish_date?: string
+          reading_minutes?: number
+          seo_description?: string
+          seo_title?: string
+          slug?: string
+          status?: string
+          tagline?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           availability: string
           category: string
           created_at: string
+          description: string
           discount: number
+          hover_image_url: string
           hover_key: string
           id: string
           image_key: string
+          image_url: string
           is_active: boolean
           name: string
           price: number
@@ -124,10 +226,13 @@ export type Database = {
           availability?: string
           category?: string
           created_at?: string
+          description?: string
           discount?: number
+          hover_image_url?: string
           hover_key?: string
           id?: string
           image_key?: string
+          image_url?: string
           is_active?: boolean
           name: string
           price?: number
@@ -139,10 +244,13 @@ export type Database = {
           availability?: string
           category?: string
           created_at?: string
+          description?: string
           discount?: number
+          hover_image_url?: string
           hover_key?: string
           id?: string
           image_key?: string
+          image_url?: string
           is_active?: boolean
           name?: string
           price?: number
