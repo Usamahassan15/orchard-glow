@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { Link } from "@tanstack/react-router";
 import { Heart, ShoppingBag, Zap, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { type Product, type Weight, discountedPrice, priceFor } from "@/data/products";
@@ -50,6 +51,7 @@ export function ProductCard({ product, onBuyNow }: { product: Product; onBuyNow:
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
       >
+        <Link to="/product/$id" params={{ id: product.id }} aria-label={`View ${product.name}`} className="absolute inset-0 z-[1]" />
         <img
           src={product.image}
           alt={product.name}
@@ -83,7 +85,7 @@ export function ProductCard({ product, onBuyNow }: { product: Product; onBuyNow:
           onClick={() => toggleWishlist(product.id)}
           aria-label="Toggle wishlist"
           className={cn(
-            "absolute right-2 top-2 grid size-8 place-items-center rounded-full backdrop-blur transition-all sm:right-3 sm:top-3 sm:size-9",
+            "absolute right-2 top-2 z-[2] grid size-8 place-items-center rounded-full backdrop-blur transition-all sm:right-3 sm:top-3 sm:size-9",
             wished ? "bg-mango text-leaf-deep" : "bg-white/80 text-foreground hover:bg-white",
           )}
         >
@@ -109,7 +111,7 @@ export function ProductCard({ product, onBuyNow }: { product: Product; onBuyNow:
         <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           {product.category}
         </div>
-        <h3 className="mt-1 font-display text-sm font-bold leading-tight sm:text-lg">{product.name}</h3>
+        <h3 className="mt-1 font-display text-sm font-bold leading-tight sm:text-lg"><Link to="/product/$id" params={{ id: product.id }} className="hover:text-primary">{product.name}</Link></h3>
         <p className="mt-1 hidden text-sm text-muted-foreground sm:block">{product.tagline}</p>
 
         <div className="mt-2 flex min-w-0 flex-col gap-0 sm:mt-3 sm:flex-row sm:items-baseline sm:gap-2">
