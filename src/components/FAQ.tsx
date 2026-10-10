@@ -5,6 +5,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
+import { fetchFaqs } from "@/lib/store-api";
 
 const faqs = [
   { q: "How fresh are the mangoes?", a: "We hand-pick every mango at peak ripeness and ship the same day. Most orders arrive within 48 hours of harvest." },
@@ -16,8 +18,10 @@ const faqs = [
 ];
 
 export function FAQ() {
+  const { data } = useQuery({ queryKey: ["faqs"], queryFn: fetchFaqs, staleTime: 60_000 });
+  const list = data && data.length ? data.map((f) => ({ q: f.question, a: f.answer })) : faqs;
   return (
-    <section className="relative bg-secondary/40 py-24 md:py-32">
+    <section id="faq" className="relative bg-secondary/40 py-24 md:py-32">
       <div className="container-x max-w-3xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -34,7 +38,7 @@ export function FAQ() {
         </motion.div>
 
         <Accordion type="single" collapsible className="mt-12 space-y-3">
-          {faqs.map((f, i) => (
+          {list.map((f, i) => (
             <AccordionItem
               key={i}
               value={`item-${i}`}

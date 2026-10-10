@@ -3,10 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Toaster, toast } from "sonner";
 import {
-  LayoutDashboard, Package, ShoppingCart, MessageSquare, LogOut, Plus, Trash2, Pencil, X, ShieldCheck,
+  LayoutDashboard, Package, ShoppingCart, MessageSquare, LogOut, Plus, Trash2, Pencil, X, ShieldCheck, ExternalLink, FileText, HelpCircle, Upload,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllProducts, type DbProduct } from "@/lib/store-api";
+import { fetchAllProducts, type DbProduct, type PostRow, type FaqRow } from "@/lib/store-api";
 import { IMAGE_KEYS, imageFor } from "@/lib/product-images";
 import { cn } from "@/lib/utils";
 import { useServerFn } from "@tanstack/react-start";
@@ -48,7 +48,7 @@ const pkr = (n: number) => `PKR ${n.toLocaleString()}`;
 function AdminPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"dashboard" | "orders" | "products" | "messages" | "admins">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "orders" | "products" | "messages" | "blog" | "faqs" | "admins">("dashboard");
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -121,6 +121,8 @@ function AdminPage() {
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "products", label: "Products", icon: Package },
     { id: "messages", label: "Messages", icon: MessageSquare },
+    { id: "blog", label: "Blog Posts", icon: FileText },
+    { id: "faqs", label: "FAQs", icon: HelpCircle },
     { id: "admins", label: "Edit Admins", icon: ShieldCheck },
   ] as const;
 
@@ -134,9 +136,14 @@ function AdminPage() {
               Admin
             </span>
           </div>
+          <div className="flex items-center gap-2">
+          <a href="/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+            <ExternalLink className="size-4" /> View site
+          </a>
           <button onClick={signOut} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm">
             <LogOut className="size-4" /> Sign out
           </button>
+          </div>
         </div>
         <div className="container-x flex gap-1 overflow-x-auto pb-2">
           {tabs.map((t) => {
@@ -165,6 +172,8 @@ function AdminPage() {
         {isAdmin && tab === "orders" && <Orders rows={orders.data ?? []} reload={() => orders.refetch()} />}
         {isAdmin && tab === "products" && <Products rows={products.data ?? []} reload={() => products.refetch()} />}
         {isAdmin && tab === "messages" && <Messages rows={messages.data ?? []} reload={() => messages.refetch()} />}
+        {isAdmin && tab === "blog" && <Blog />}
+        {isAdmin && tab === "faqs" && <Faqs />}
         {isAdmin && tab === "admins" && <Admins />}
       </div>
       <Toaster position="top-center" richColors />
@@ -347,6 +356,7 @@ function Row({ label, value }: { label: string; value: string }) {
 const emptyProduct = {
   name: "", tagline: "", price: 2000, category: "Chaunsa", availability: "In Stock",
   discount: 0, image_key: "chaunsa", hover_key: "sindhri", is_active: true, sort_order: 99,
+  description: "", image_url: "", hover_image_url: "",
 };
 
 function Products({ rows, reload }: { rows: DbProduct[]; reload: () => void }) {
@@ -355,8 +365,7 @@ function Products({ rows, reload }: { rows: DbProduct[]; reload: () => void }) {
   const save = async () => {
     if (!editing) return;
     if (editing.name.trim().length < 2) return toast.error("Enter a product name");
-    const payload = { ...editing };
-    delete (payload as { id?: string }).id;
+    const { id: _id, created_at: _c, updated_at: _u, ...payload } = editing as typeof editing & { created_at?: string; updated_at?: string };
     const { error } = editing.id
       ? await supabase.from("products").update(payload).eq("id", editing.id)
       : await supabase.from("products").insert(payload);
@@ -385,7 +394,7 @@ function Products({ rows, reload }: { rows: DbProduct[]; reload: () => void }) {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {rows.map((p) => (
           <div key={p.id} className="overflow-hidden rounded-3xl border border-border bg-card">
-            <img src={imageFor(p.image_key)} alt={p.name} loading="lazy" width={600} height={400} className="h-40 w-full object-cover" />
+            <img src={p.image_url || imageFor(p.image_key)} alt={p.name} loading="lazy" width={600} height={400} className="h-40 w-full object-cover" />
             <div className="p-4">
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -402,7 +411,7 @@ function Products({ rows, reload }: { rows: DbProduct[]; reload: () => void }) {
                 <button onClick={() => setEditing({ ...p })} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs">
                   <Pencil className="size-3" /> Edit
                 </button>
-                <button onClick={() => remove(p.id)} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs text-destructive">
+                <button onClick={() => { if (confirm(`Delete ${p.name}?`)) remove(p.id); }} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs text-destructive">
                   <Trash2 className="size-3" /> Delete
                 </button>
               </div>
@@ -425,17 +434,23 @@ function Products({ rows, reload }: { rows: DbProduct[]; reload: () => void }) {
               <Input label="Discount %" type="number" value={String(editing.discount)} onChange={(v) => setEditing({ ...editing, discount: Number(v) || 0 })} />
               <Select label="Category" value={editing.category} options={CATEGORIES} onChange={(v) => setEditing({ ...editing, category: v })} />
               <Select label="Availability" value={editing.availability} options={AVAILABILITY} onChange={(v) => setEditing({ ...editing, availability: v })} />
-              <Select label="Photo" value={editing.image_key} options={[...IMAGE_KEYS]} onChange={(v) => setEditing({ ...editing, image_key: v })} />
-              <Select label="Hover photo" value={editing.hover_key} options={[...IMAGE_KEYS]} onChange={(v) => setEditing({ ...editing, hover_key: v })} />
+              <ImageUpload label="Main photo" value={editing.image_url} fallback={imageFor(editing.image_key)} onChange={(v) => setEditing({ ...editing, image_url: v })} />
+              <ImageUpload label="Second photo (hover)" value={editing.hover_image_url} fallback={imageFor(editing.hover_key)} onChange={(v) => setEditing({ ...editing, hover_image_url: v })} />
+              <Select label="Default photo (if none uploaded)" value={editing.image_key} options={[...IMAGE_KEYS]} onChange={(v) => setEditing({ ...editing, image_key: v })} />
+              <Select label="Default hover photo" value={editing.hover_key} options={[...IMAGE_KEYS]} onChange={(v) => setEditing({ ...editing, hover_key: v })} />
+              <div className="sm:col-span-2"><TextArea label="Description" value={editing.description} rows={5} onChange={(v) => setEditing({ ...editing, description: v })} /></div>
               <Input label="Sort order" type="number" value={String(editing.sort_order)} onChange={(v) => setEditing({ ...editing, sort_order: Number(v) || 0 })} />
               <label className="flex items-center gap-2 self-end text-sm">
                 <input type="checkbox" checked={editing.is_active} onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} className="size-4 accent-primary" />
                 Show on website
               </label>
             </div>
-            <button onClick={save} className="mt-6 w-full rounded-full bg-primary py-3 text-sm font-semibold text-primary-foreground">
+            <div className="mt-6 grid grid-cols-2 gap-2">
+            <button onClick={() => setEditing(null)} className="rounded-full border border-border py-3 text-sm font-semibold">Cancel</button>
+            <button onClick={save} className="w-full rounded-full bg-primary py-3 text-sm font-semibold text-primary-foreground">
               Save product
             </button>
+            </div>
           </div>
         </div>
       )}
@@ -489,7 +504,7 @@ function Input({ label, value, onChange, type = "text" }: { label: string; value
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        maxLength={200}
+        maxLength={500}
         className="mt-1 w-full rounded-2xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none"
       />
     </div>
@@ -597,6 +612,257 @@ function Admins() {
             <div className="mt-6 flex gap-2">
               <button onClick={() => setConfirmId(null)} className="flex-1 rounded-full border border-border py-2.5 text-sm">Cancel</button>
               <button onClick={() => doRemove(target.id)} className="flex-1 rounded-full bg-destructive py-2.5 text-sm font-semibold text-destructive-foreground">Yes, remove</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+async function uploadImage(file: File): Promise<string> {
+  if (!file.type.startsWith("image/")) throw new Error("Please choose an image file");
+  if (file.size > 5 * 1024 * 1024) throw new Error("Image must be under 5 MB");
+  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from("product-images").upload(path, file, { contentType: file.type });
+  if (error) throw error;
+  const { data, error: e2 } = await supabase.storage.from("product-images").createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+  if (e2 || !data) throw e2 ?? new Error("Upload failed");
+  return data.signedUrl;
+}
+
+function ImageUpload({ label, value, fallback, onChange }: { label: string; value: string; fallback?: string; onChange: (v: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const onFile = async (f?: File) => {
+    if (!f) return;
+    setBusy(true);
+    try { onChange(await uploadImage(f)); toast.success("Image uploaded"); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Upload failed"); }
+    finally { setBusy(false); }
+  };
+  const src = value || fallback;
+  return (
+    <div>
+      <label className="text-xs font-semibold text-muted-foreground">{label}</label>
+      <div className="mt-1 flex items-center gap-3 rounded-2xl border border-border p-2">
+        {src ? <img src={src} alt="" className="size-14 rounded-xl object-cover" /> : <div className="size-14 rounded-xl bg-secondary" />}
+        <div className="flex flex-col gap-1">
+          <label className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground">
+            <Upload className="size-3" /> {busy ? "Uploading…" : value ? "Change" : "Upload"}
+            <input type="file" accept="image/*" className="hidden" disabled={busy} onChange={(e) => onFile(e.target.files?.[0])} />
+          </label>
+          {value && <button type="button" onClick={() => onChange("")} className="text-left text-xs text-destructive">Remove</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TextArea({ label, value, onChange, rows = 4 }: { label: string; value: string; onChange: (v: string) => void; rows?: number }) {
+  return (
+    <div>
+      <label className="text-xs font-semibold text-muted-foreground">{label}</label>
+      <textarea value={value} rows={rows} onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full rounded-2xl border border-border bg-background px-4 py-2.5 text-sm focus:border-primary focus:outline-none" />
+    </div>
+  );
+}
+
+function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button type="button" onClick={() => onChange(!checked)} className="flex items-center gap-3 self-end text-sm">
+      <span className={cn("relative h-6 w-11 rounded-full transition", checked ? "bg-primary" : "bg-muted")}>
+        <span className={cn("absolute top-0.5 size-5 rounded-full bg-background shadow transition-all", checked ? "left-[22px]" : "left-0.5")} />
+      </span>
+      {label}: <b>{checked ? "On" : "Off"}</b>
+    </button>
+  );
+}
+
+const slugify = (t: string) => t.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
+
+type PostForm = Omit<PostRow, "id" | "created_at" | "tags"> & { id?: string; tagsText: string };
+const emptyPost = (): PostForm => ({
+  title: "", slug: "", excerpt: "", content: "", category: "", tagsText: "", author: "", cover_image_url: "",
+  image_alt: "", reading_minutes: 3, status: "draft", featured: false, publish_date: new Date().toISOString(),
+  tagline: "", seo_title: "", seo_description: "", canonical_url: "",
+});
+
+function Blog() {
+  const posts = useQuery({
+    queryKey: ["admin-posts"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("posts").select("*").order("publish_date", { ascending: false });
+      if (error) throw error;
+      return data as PostRow[];
+    },
+  });
+  const [f, setF] = useState<PostForm | null>(null);
+  const [slugTouched, setSlugTouched] = useState(false);
+
+  const save = async () => {
+    if (!f) return;
+    if (f.title.trim().length < 2) return toast.error("Enter a title");
+    const slug = slugify(f.slug || f.title);
+    if (!slug) return toast.error("Enter a URL slug");
+    const { id, tagsText, ...rest } = f;
+    const payload = { ...rest, slug, tags: tagsText.split("\n").map((t) => t.trim()).filter(Boolean) };
+    const { error } = id
+      ? await supabase.from("posts").update(payload).eq("id", id)
+      : await supabase.from("posts").insert(payload);
+    if (error) return toast.error(error.message.includes("duplicate") ? "That URL slug is already used" : "Could not save the post");
+    toast.success("Post saved");
+    setF(null);
+    posts.refetch();
+  };
+
+  const remove = async (p: PostRow) => {
+    if (!confirm(`Delete "${p.title}"?`)) return;
+    const { error } = await supabase.from("posts").delete().eq("id", p.id);
+    if (error) return toast.error("Could not delete the post");
+    toast.success("Post deleted");
+    posts.refetch();
+  };
+
+  const toLocal = (iso: string) => { const d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
+
+  return (
+    <div className="space-y-4">
+      <button onClick={() => { setF(emptyPost()); setSlugTouched(false); }} className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">
+        <Plus className="size-4" /> New post
+      </button>
+      <div className="space-y-3">
+        {posts.data?.map((p) => (
+          <div key={p.id} className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-border bg-card p-4">
+            <div className="flex min-w-0 items-center gap-3">
+              {p.cover_image_url && <img src={p.cover_image_url} alt="" className="size-14 rounded-xl object-cover" />}
+              <div className="min-w-0">
+                <div className="truncate font-display font-bold">{p.title}</div>
+                <div className="text-xs text-muted-foreground">/blog/{p.slug} · {new Date(p.publish_date).toLocaleDateString()}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {p.featured && <span className="rounded-full bg-mango px-2 py-1 text-[10px] font-bold text-leaf-deep">Featured</span>}
+              <span className={cn("rounded-full px-2 py-1 text-[10px] font-bold capitalize", p.status === "published" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{p.status}</span>
+              {p.status === "published" && <a href={`/blog/${p.slug}`} target="_blank" rel="noopener noreferrer" className="rounded-full border border-border p-2" aria-label="View post"><ExternalLink className="size-3" /></a>}
+              <button onClick={() => { setF({ ...p, tagsText: p.tags.join("\n") }); setSlugTouched(true); }} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs"><Pencil className="size-3" /> Edit</button>
+              <button onClick={() => remove(p)} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs text-destructive"><Trash2 className="size-3" /> Delete</button>
+            </div>
+          </div>
+        ))}
+        {posts.data?.length === 0 && <p className="text-sm text-muted-foreground">No posts yet.</p>}
+      </div>
+
+      {f && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-leaf-deep/60 p-4 backdrop-blur-sm">
+          <div className="my-8 w-full max-w-3xl rounded-3xl bg-background p-6 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-xl font-bold">{f.id ? "Edit post" : "New post"}</h3>
+              <button onClick={() => setF(null)} aria-label="Close"><X className="size-5" /></button>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Input label="Title" value={f.title} onChange={(v) => setF({ ...f, title: v, slug: slugTouched ? f.slug : slugify(v) })} />
+              <Input label="URL slug" value={f.slug} onChange={(v) => { setSlugTouched(true); setF({ ...f, slug: v }); }} />
+              <div className="sm:col-span-2"><Input label="Tagline" value={f.tagline} onChange={(v) => setF({ ...f, tagline: v })} /></div>
+              <div className="sm:col-span-2"><TextArea label="Excerpt" rows={2} value={f.excerpt} onChange={(v) => setF({ ...f, excerpt: v })} /></div>
+              <div className="sm:col-span-2"><TextArea label="Content (Markdown)" rows={12} value={f.content} onChange={(v) => setF({ ...f, content: v })} /></div>
+              <Input label="Category" value={f.category} onChange={(v) => setF({ ...f, category: v })} />
+              <Input label="Author" value={f.author} onChange={(v) => setF({ ...f, author: v })} />
+              <TextArea label="Tags (one per line)" rows={4} value={f.tagsText} onChange={(v) => setF({ ...f, tagsText: v })} />
+              <div className="space-y-3">
+                <ImageUpload label="Cover image (upload)" value={f.cover_image_url} onChange={(v) => setF({ ...f, cover_image_url: v })} />
+              </div>
+              <div className="sm:col-span-2"><Input label="Cover image URL" value={f.cover_image_url} onChange={(v) => setF({ ...f, cover_image_url: v })} /></div>
+              <Input label="Image alt text" value={f.image_alt} onChange={(v) => setF({ ...f, image_alt: v })} />
+              <Input label="Reading minutes" type="number" value={String(f.reading_minutes)} onChange={(v) => setF({ ...f, reading_minutes: Number(v) || 1 })} />
+              <Select label="Status" value={f.status} options={["draft", "published"]} onChange={(v) => setF({ ...f, status: v })} />
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Publish date</label>
+                <input type="datetime-local" value={toLocal(f.publish_date)} onChange={(e) => e.target.value && setF({ ...f, publish_date: new Date(e.target.value).toISOString() })}
+                  className="mt-1 w-full rounded-2xl border border-border bg-background px-4 py-2.5 text-sm" />
+              </div>
+              <Toggle label="Featured" checked={f.featured} onChange={(v) => setF({ ...f, featured: v })} />
+              <div />
+              <div className="sm:col-span-2 mt-2 border-t border-border pt-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">SEO</div>
+              <Input label="SEO title" value={f.seo_title} onChange={(v) => setF({ ...f, seo_title: v })} />
+              <Input label="Canonical URL" value={f.canonical_url} onChange={(v) => setF({ ...f, canonical_url: v })} />
+              <div className="sm:col-span-2"><TextArea label="SEO description" rows={2} value={f.seo_description} onChange={(v) => setF({ ...f, seo_description: v })} /></div>
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-2">
+              <button onClick={() => setF(null)} className="rounded-full border border-border py-3 text-sm font-semibold">Cancel</button>
+              <button onClick={save} className="rounded-full bg-primary py-3 text-sm font-semibold text-primary-foreground">Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Faqs() {
+  const faqs = useQuery({
+    queryKey: ["admin-faqs"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("faqs").select("*").order("sort_order");
+      if (error) throw error;
+      return data as FaqRow[];
+    },
+  });
+  const [f, setF] = useState<(Omit<FaqRow, "id"> & { id?: string }) | null>(null);
+
+  const save = async () => {
+    if (!f) return;
+    if (f.question.trim().length < 3) return toast.error("Enter a question");
+    const { id, ...payload } = f as FaqRow & { created_at?: string; updated_at?: string };
+    delete (payload as { created_at?: string }).created_at;
+    delete (payload as { updated_at?: string }).updated_at;
+    const { error } = id ? await supabase.from("faqs").update(payload).eq("id", id) : await supabase.from("faqs").insert(payload);
+    if (error) return toast.error("Could not save the FAQ");
+    toast.success("FAQ saved");
+    setF(null);
+    faqs.refetch();
+  };
+  const remove = async (row: FaqRow) => {
+    if (!confirm("Delete this FAQ?")) return;
+    const { error } = await supabase.from("faqs").delete().eq("id", row.id);
+    if (error) return toast.error("Could not delete the FAQ");
+    faqs.refetch();
+  };
+
+  return (
+    <div className="space-y-4">
+      <button onClick={() => setF({ question: "", answer: "", sort_order: (faqs.data?.length ?? 0) + 1, is_active: true })} className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">
+        <Plus className="size-4" /> New FAQ
+      </button>
+      {faqs.data?.map((q) => (
+        <div key={q.id} className="rounded-3xl border border-border bg-card p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="font-display font-bold">{q.question}</div>
+              <p className="mt-1 text-sm text-muted-foreground">{q.answer}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={cn("rounded-full px-2 py-1 text-[10px] font-bold", q.is_active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>{q.is_active ? "Live" : "Hidden"}</span>
+              <button onClick={() => setF({ ...q })} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs"><Pencil className="size-3" /> Edit</button>
+              <button onClick={() => remove(q)} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-xs text-destructive"><Trash2 className="size-3" /> Delete</button>
+            </div>
+          </div>
+        </div>
+      ))}
+      {f && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-leaf-deep/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-3xl bg-background p-6 shadow-2xl">
+            <h3 className="font-display text-xl font-bold">{f.id ? "Edit FAQ" : "New FAQ"}</h3>
+            <div className="mt-4 space-y-3">
+              <Input label="Question" value={f.question} onChange={(v) => setF({ ...f, question: v })} />
+              <TextArea label="Answer" rows={5} value={f.answer} onChange={(v) => setF({ ...f, answer: v })} />
+              <Input label="Order" type="number" value={String(f.sort_order)} onChange={(v) => setF({ ...f, sort_order: Number(v) || 0 })} />
+              <Toggle label="Show on website" checked={f.is_active} onChange={(v) => setF({ ...f, is_active: v })} />
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-2">
+              <button onClick={() => setF(null)} className="rounded-full border border-border py-3 text-sm font-semibold">Cancel</button>
+              <button onClick={save} className="rounded-full bg-primary py-3 text-sm font-semibold text-primary-foreground">Save</button>
             </div>
           </div>
         </div>

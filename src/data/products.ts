@@ -16,6 +16,7 @@ export type Product = {
   discount?: number;
   category: "Chaunsa" | "Sindhri" | "Anwar Ratol" | "Langra";
   createdAt: number;
+  description?: string;
 };
 
 const IMAGES = [chaunsa, sindhri, anwar, langra];
